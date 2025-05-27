@@ -20,15 +20,25 @@ function TodoApp() {
     context.signOut,
   ]);
 
-  useEffect(() => {
-    if (authStatus === "authenticated") {
-      const subscription = client.models.Todo.observeQuery().subscribe({
-        next: (data) => setTodos([...data.items]),
-      });
+  
 
-      return () => subscription.unsubscribe(); // クリーンアップ
-    }
-  }, [authStatus]);
+function listTodos(
+  setTodos: (todos: Schema["Todo"]["type"][]) => void
+) {
+  const subscription = client.models.Todo.observeQuery().subscribe({
+    next: (data) => setTodos([...data.items]),
+  });
+  return subscription;
+}
+
+ useEffect(() => {
+  if (authStatus === "authenticated") {
+    const subscription = listTodos(setTodos);
+    return () => subscription.unsubscribe(); // クリーンアップ
+  }
+}, [authStatus]); 
+
+
 
   function createTodo() {
     const content = window.prompt("Todo content");
