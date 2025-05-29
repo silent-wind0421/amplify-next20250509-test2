@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "@/amplify/data/resource";
 import { Amplify } from "aws-amplify";
@@ -9,53 +9,64 @@ import "@aws-amplify/ui-react/styles.css";
 import { Authenticator, useAuthenticator } from "@aws-amplify/ui-react";
 
 Amplify.configure(outputs);
-
 const client = generateClient<Schema>();
 
 function TodoApp() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const hasLoggedRef = useRef<string | null>(null); // 直近ログインユーザー記録用
+
   const { user, authStatus, signOut } = useAuthenticator(context => [
     context.user,
     context.authStatus,
     context.signOut,
   ]);
 
-  
+  // 🔸 最新5件まで取得・更新
+  useEffect(() => {
+    const subscription = client.models.Todo.observeQuery().subscribe({
+      next: (data) => {
+        const sorted = [...data.items]
+          .filter((item) => item.createdAt)
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+          )
+          .slice(0, 5);
+        setTodos(sorted);
+      },
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
-function listTodos(
-  setTodos: (todos: Schema["Todo"]["type"][]) => void
-) {
-  const subscription = client.models.Todo.observeQuery().subscribe({
-    next: (data) => setTodos([...data.items]),
-  });
-  return subscription;
-}
+  // 🔸 初回ログイン時に 1 回だけ書き込む
+  useEffect(() => {
+    if (authStatus === "authenticated" && user) {
+      const loginId = user.signInDetails?.loginId ?? user.username;
 
- useEffect(() => {
-  if (authStatus === "authenticated") {
-    const subscription = listTodos(setTodos);
-    return () => subscription.unsubscribe(); // クリーンアップ
-  }
-}, [authStatus]); 
+      // すでに書き込み済みならスキップ
+      if (hasLoggedRef.current === loginId) return;
 
+      hasLoggedRef.current = loginId;
 
+      const loginTime = new Date().toLocaleString("ja-JP", {
+        timeZone: "Asia/Tokyo",
+      });
 
-  function createTodo() {
-    const content = window.prompt("Todo content");
-    if (content) {
-      client.models.Todo.create({ content });
+      client.models.Todo.create({
+        content: `${loginId} がログインしました (${loginTime})`,
+      }).catch((err) => {
+        console.error("書き込み失敗:", err);
+      });
     }
-  }
+  }, [authStatus, user]);
 
-  function deleteTodo(id: string) {
+  const deleteTodo = (id: string) => {
     client.models.Todo.delete({ id });
-  }
+  };
 
   return (
     <main style={{ padding: "1.5rem" }}>
-      <h1>My todos</h1>
-      <p>こんにちは、{user?.signInDetails?.loginId} さん！</p>
-      <button onClick={createTodo}>+ new</button>
+      <p>こんにちは、{user?.signInDetails?.loginId ?? user?.username} さん！</p>
       <ul>
         {todos.map((todo) => (
           <li key={todo.id} onClick={() => deleteTodo(todo.id)}>
@@ -63,14 +74,6 @@ function listTodos(
           </li>
         ))}
       </ul>
-
-      <div style={{ marginTop: "2rem" }}>
-        <p>🥳 App successfully hosted. Try creating a new todo.</p>
-        <a href="https://docs.amplify.aws/nextjs/start/quickstart/nextjs-app-router-client-components/">
-          Review next steps of this tutorial.
-        </a>
-      </div>
-
       <div style={{ marginTop: "2rem" }}>
         <button onClick={signOut}>サインアウト</button>
       </div>
@@ -85,3 +88,4 @@ export default function App() {
     </Authenticator>
   );
 }
+
