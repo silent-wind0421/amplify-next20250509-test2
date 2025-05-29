@@ -7,6 +7,8 @@ import { Amplify } from "aws-amplify";
 import outputs from "@/amplify_outputs.json";
 import "@aws-amplify/ui-react/styles.css";
 import { Authenticator, useAuthenticator } from "@aws-amplify/ui-react";
+import { Subscription } from 'rxjs';
+
 
 Amplify.configure(outputs);
 const client = generateClient<Schema>();
@@ -14,7 +16,8 @@ const client = generateClient<Schema>();
 function TodoApp() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const subscriptionRef = useRef<ReturnType<typeof client.models.Todo.observeQuery> | null>(null);
+//  const subscriptionRef = useRef<ReturnType<typeof client.models.Todo.observeQuery> | null>(null);
+  const subscriptionRef = useRef<Subscription | null>(null);
 
   const { user, authStatus, signOut } = useAuthenticator(context => [
     context.user,
