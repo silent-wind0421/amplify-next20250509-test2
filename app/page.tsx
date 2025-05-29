@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "@/amplify/data/resource";
 import { Amplify } from "aws-amplify";
@@ -13,14 +13,45 @@ const client = generateClient<Schema>();
 
 function TodoApp() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const subscriptionRef = useRef<ReturnType<typeof client.models.Todo.observeQuery> | null>(null);
+
   const { user, authStatus, signOut } = useAuthenticator(context => [
     context.user,
     context.authStatus,
     context.signOut,
   ]);
 
-  // Todo一覧取得（observeQuery）
+  const isWritingRef = useRef(false);
+
+  // 🔸 書き込み処理（セッション＋useRef）
   useEffect(() => {
+    if (authStatus === "authenticated" && user && !isWritingRef.current) {
+      const loginId = user.signInDetails?.loginId;
+      const sessionKey = `hasLogged_${loginId}`;
+      if (sessionStorage.getItem(sessionKey)) return;
+
+      isWritingRef.current = true;
+
+      const loginTime = new Date().toLocaleString("ja-JP", {
+        timeZone: "Asia/Tokyo",
+      });
+
+      client.models.Todo.create({
+        content: `${loginId} がログインしました (${loginTime})`,
+      }).then(() => {
+        sessionStorage.setItem(sessionKey, "true");
+      }).catch(err => {
+        console.error("書き込み失敗:", err);
+      });
+    }
+  }, [authStatus, user]);
+
+  // 🔸 「履歴を見る」ボタン押下時に購読開始
+  const handleShowHistory = () => {
+    setShowHistory(true);
+    if (subscriptionRef.current) return; // 二重登録防止
+
     const subscription = client.models.Todo.observeQuery().subscribe({
       next: (data) => {
         const sorted = [...data.items]
@@ -33,35 +64,21 @@ function TodoApp() {
       },
     });
 
-    return () => subscription.unsubscribe();
+    subscriptionRef.current = subscription;
+  };
+
+  // 🔸 アンマウント時に購読解除
+  useEffect(() => {
+    return () => {
+      subscriptionRef.current?.unsubscribe();
+    };
   }, []);
 
-  // ログイン時に一度だけ書き込む（セッションストレージ利用）
-  useEffect(() => {
-    if (authStatus === "authenticated" && user) {
-      const loginId = user.signInDetails?.loginId;
-      const sessionKey = `hasLogged_${loginId}`;
-
-      // セッションストレージに記録があるなら処理しない
-      if (sessionStorage.getItem(sessionKey)) {
-        return;
-      }
-
-      const loginTime = new Date().toLocaleString("ja-JP", {
-        timeZone: "Asia/Tokyo",
-      });
-
-      client.models.Todo.create({
-        content: `${loginId} がログインしました (${loginTime})`,
-      })
-        .then(() => {
-          sessionStorage.setItem(sessionKey, "true"); // 書き込み済みとして記録
-        })
-        .catch((err) => {
-          console.error("書き込み失敗:", err);
-        });
-    }
-  }, [authStatus, user]);
+  const handleSignOut = () => {
+    sessionStorage.clear();
+    signOut();
+    window.location.reload();
+  };
 
   const deleteTodo = (id: string) => {
     client.models.Todo.delete({ id });
@@ -70,15 +87,23 @@ function TodoApp() {
   return (
     <main style={{ padding: "1.5rem" }}>
       <p>こんにちは、{user?.signInDetails?.loginId} さん！</p>
-      <ul>
-        {todos.map((todo) => (
-          <li key={todo.id} onClick={() => deleteTodo(todo.id)}>
-            {todo.content}
-          </li>
-        ))}
-      </ul>
+
+      {!showHistory && (
+        <button onClick={handleShowHistory}>履歴を見る</button>
+      )}
+
+      {showHistory && (
+        <ul>
+          {todos.map((todo) => (
+            <li key={todo.id} onClick={() => deleteTodo(todo.id)}>
+              {todo.content}
+            </li>
+          ))}
+        </ul>
+      )}
+
       <div style={{ marginTop: "2rem" }}>
-        <button onClick={signOut}>サインアウト</button>
+        <button onClick={handleSignOut}>サインアウト</button>
       </div>
     </main>
   );

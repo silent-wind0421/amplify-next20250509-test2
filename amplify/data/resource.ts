@@ -13,7 +13,7 @@ const schema = a.schema({
     })
 
     .authorization(allow => [
-  // allow.authenticated().to(["read"]),
+    allow.authenticated().to(["read"]),
     allow.owner()
   ]),
   
