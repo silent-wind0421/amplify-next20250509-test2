@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "@/amplify/data/resource";
 import { Amplify } from "aws-amplify";
@@ -13,39 +13,40 @@ const client = generateClient<Schema>();
 
 function TodoApp() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const hasLoggedRef = useRef<string | null>(null); // 直近ログインユーザー記録用
+
   const { user, authStatus, signOut } = useAuthenticator(context => [
     context.user,
     context.authStatus,
     context.signOut,
   ]);
 
-  // Todo一覧取得（observeQuery）
+  // 🔸 最新5件まで取得・更新
   useEffect(() => {
     const subscription = client.models.Todo.observeQuery().subscribe({
       next: (data) => {
         const sorted = [...data.items]
           .filter((item) => item.createdAt)
-          .sort((a, b) =>
-            new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
           )
           .slice(0, 5);
         setTodos(sorted);
       },
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  // ログイン時に一度だけ書き込む（セッションストレージ利用）
+  // 🔸 初回ログイン時に 1 回だけ書き込む
   useEffect(() => {
     if (authStatus === "authenticated" && user) {
-      const loginId = user.signInDetails?.loginId;
-      const sessionKey = `hasLogged_${loginId}`;
+      const loginId = user.signInDetails?.loginId ?? user.username;
 
-      // セッションストレージに記録があるなら処理しない
-      if (sessionStorage.getItem(sessionKey)) {
-        return;
-      }
+      // すでに書き込み済みならスキップ
+      if (hasLoggedRef.current === loginId) return;
+
+      hasLoggedRef.current = loginId;
 
       const loginTime = new Date().toLocaleString("ja-JP", {
         timeZone: "Asia/Tokyo",
@@ -53,13 +54,9 @@ function TodoApp() {
 
       client.models.Todo.create({
         content: `${loginId} がログインしました (${loginTime})`,
-      })
-        .then(() => {
-          sessionStorage.setItem(sessionKey, "true"); // 書き込み済みとして記録
-        })
-        .catch((err) => {
-          console.error("書き込み失敗:", err);
-        });
+      }).catch((err) => {
+        console.error("書き込み失敗:", err);
+      });
     }
   }, [authStatus, user]);
 
@@ -69,7 +66,7 @@ function TodoApp() {
 
   return (
     <main style={{ padding: "1.5rem" }}>
-      <p>こんにちは、{user?.signInDetails?.loginId} さん！</p>
+      <p>こんにちは、{user?.signInDetails?.loginId ?? user?.username} さん！</p>
       <ul>
         {todos.map((todo) => (
           <li key={todo.id} onClick={() => deleteTodo(todo.id)}>
@@ -91,3 +88,4 @@ export default function App() {
     </Authenticator>
   );
 }
+

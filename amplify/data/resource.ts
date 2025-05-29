@@ -11,7 +11,15 @@ const schema = a.schema({
     .model({
       content: a.string(),
     })
-    .authorization((allow) => [allow.publicApiKey()]),
+
+    .authorization(allow => [
+  // allow.authenticated().to(["read"]),
+    allow.owner()
+  ]),
+  
+  //.authorization((allow) => [allow.authenticated()]),
+
+    //.authorization((allow) => [allow.publicApiKey()]),
 
    // .authorization(allow => [allow.owner()]),
 });
