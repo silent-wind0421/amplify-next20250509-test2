@@ -31,6 +31,8 @@ function LoginApp() {
   useEffect(() => {
     if (authStatus === "authenticated" && user && !isWritingRef.current) {
       const loginId = user.signInDetails?.loginId;
+      if (!loginId) return;
+
       const sessionKey = `hasLogged_${loginId}`;
       if (sessionStorage.getItem(sessionKey)) return;
 
