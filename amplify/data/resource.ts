@@ -9,9 +9,9 @@ specifies that any user authenticated via an API key can "create", "read",
 const schema = a.schema({
   Login: a
     .model({
-      uid: a.string().required,
+      uid: a.string().required(),
       loginTime: a.datetime().required(),
-      
+
     })
 
     .authorization(allow => [
