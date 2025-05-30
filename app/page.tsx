@@ -31,7 +31,11 @@ function LoginApp() {
   useEffect(() => {
     if (authStatus === "authenticated" && user && !isWritingRef.current) {
       const loginId = user.signInDetails?.loginId;
-      if (!loginId) return;
+      console.log("loginId:", JSON.stringify(loginId)); 
+      if (!loginId) {
+        console.log("loginId is none") 
+        return;
+      }  
 
       const sessionKey = `hasLogged_${loginId}`;
       if (sessionStorage.getItem(sessionKey)) return;
@@ -47,6 +51,8 @@ function LoginApp() {
         loginTime:  loginTime
       }).then(() => {
         sessionStorage.setItem(sessionKey, "true");
+        console.log("書き込み成功");
+        console.log(loginId);
       }).catch(err => {
         console.error("書き込み失敗:", err);
       });
