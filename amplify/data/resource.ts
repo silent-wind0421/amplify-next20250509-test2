@@ -10,8 +10,7 @@ const schema = a.schema({
   Login: a
     .model({
       uid: a.string(),
-      loginTime: a.datetime(),
-
+      loginTime: a.string(),
     })
 
     .authorization(allow => [

@@ -53,6 +53,7 @@ function LoginApp() {
         sessionStorage.setItem(sessionKey, "true");
         console.log("書き込み成功");
         console.log(loginId);
+        console.log(loginTime);
       }).catch(err => {
         console.error("書き込み失敗:", err);
       });
