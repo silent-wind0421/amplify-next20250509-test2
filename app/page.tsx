@@ -109,10 +109,10 @@ function LoginApp() {
       {showHistory && (
         <ul>
           {logins.map((login) => (
-            <li key={login.id}>
-              {login.uid}
-              {login.loginTime}
-            </li>
+             <li key={login.id} style={{ display: "flex", gap: "1rem", padding: "0.5rem", borderBottom: "1px solid #ccc" }}>
+              <div style={{ flex: 1, fontWeight: "bold" }}>{login.uid}</div>
+              <div style={{ flex: 2 }}>{login.loginTime}</div>
+            　</li>
           ))}
         </ul>
       )}

@@ -9,12 +9,12 @@ specifies that any user authenticated via an API key can "create", "read",
 const schema = a.schema({
   Login: a
     .model({
-      uid: a.string(),
-      loginTime: a.string(),
+      uid: a.string().required(),
+      loginTime: a.string().required(),
     })
 
     .authorization(allow => [
-    allow.authenticated().to(["create", "read"]),
+    allow.authenticated().to(["read"]),
     allow.owner()
   ]),
   
