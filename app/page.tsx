@@ -13,8 +13,8 @@ import { Subscription } from 'rxjs';
 Amplify.configure(outputs);
 const client = generateClient<Schema>();
 
-function TodoApp() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+function LoginApp() {
+  const [logins, setLogins] = useState<Array<Schema["Login"]["type"]>>([]);
   const [showHistory, setShowHistory] = useState(false);
 //  const subscriptionRef = useRef<ReturnType<typeof client.models.Todo.observeQuery> | null>(null);
   const subscriptionRef = useRef<Subscription | null>(null);
@@ -40,8 +40,9 @@ function TodoApp() {
         timeZone: "Asia/Tokyo",
       });
 
-      client.models.Todo.create({
-        content: `${loginId} がログインしました (${loginTime})`,
+      client.models.Login.create({
+        uid: loginId,
+        loginTime:  loginTime
       }).then(() => {
         sessionStorage.setItem(sessionKey, "true");
       }).catch(err => {
@@ -55,15 +56,15 @@ function TodoApp() {
     setShowHistory(true);
     if (subscriptionRef.current) return; // 二重登録防止
 
-    const subscription = client.models.Todo.observeQuery().subscribe({
+    const subscription = client.models.Login.observeQuery().subscribe({
       next: (data) => {
         const sorted = [...data.items]
-          .filter((item) => item.createdAt)
+          .filter((item) => item.loginTime)
           .sort((a, b) =>
-            new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+            new Date(b.loginTime!).getTime() - new Date(a.loginTime!).getTime()
           )
           .slice(0, 5);
-        setTodos(sorted);
+        setLogins(sorted);
       },
     });
 
@@ -83,9 +84,10 @@ function TodoApp() {
     window.location.reload();
   };
 
+ {/*
   const deleteTodo = (id: string) => {
     client.models.Todo.delete({ id });
-  };
+  };*/}
 
   return (
     <main style={{ padding: "1.5rem" }}>
@@ -97,9 +99,10 @@ function TodoApp() {
 
       {showHistory && (
         <ul>
-          {todos.map((todo) => (
-            <li key={todo.id} onClick={() => deleteTodo(todo.id)}>
-              {todo.content}
+          {logins.map((login) => (
+            <li key={Login.id}>
+              {login.uid}
+              {login.loginTime}
             </li>
           ))}
         </ul>
@@ -115,7 +118,7 @@ function TodoApp() {
 export default function App() {
   return (
     <Authenticator>
-      <TodoApp />
+      <LoginApp />
     </Authenticator>
   );
 }
