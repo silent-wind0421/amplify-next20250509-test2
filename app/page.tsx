@@ -31,6 +31,18 @@ const customTheme = createTheme({
         primary: { value: '#f0f0f0' },
       },
     },
+
+    components: {
+      button: {
+        primary: {
+          backgroundColor: { value: 'blue' },  // 背景色（例：青）
+          color: { value: 'white' },           // テキスト色（例：白）
+          _hover: {
+            backgroundColor: { value: '#003399' }, // ホバー時の色（任意）
+          },
+        },
+      },
+    },
   },
 });
 
@@ -71,7 +83,7 @@ const components = {
           <Button
             variation="primary"
             onClick={submitForm}
-            style={{ backgroundColor: 'blue', color: 'white' }}
+           /* style={{ backgroundColor: 'blue', color: 'white' }}*/
           >
             送信
           </Button>
